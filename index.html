@@ -1,1 +1,745 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<title>Conversor EPUB Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1a1611;--parchment:#f6f1ea;--cream:#ede5d8;--accent:#8b4513;
+--accent-light:#c4956a;--gold:#b8860b;--sage:#6b7c5e;--border:#d4c9b8;
+--shadow:rgba(26,22,17,.08);--drive:#4285f4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--parchment);color:var(--ink);
+min-height:100vh;display:flex;flex-direction:column;align-items:center}
+header{width:100%;padding:2rem 2rem 1.5rem;text-align:center;
+border-bottom:1px solid var(--border);background:linear-gradient(180deg,#faf7f2,var(--parchment))}
+header h1{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:700;letter-spacing:-.02em}
+header h1 span{color:var(--accent)}
+header p{color:#7a6f62;margin-top:.4rem;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:1.05rem}
+.container{width:100%;max-width:780px;padding:2rem;flex:1}
+.input-tabs{display:flex;border-bottom:2px solid var(--border)}
+.tab-btn{padding:.7rem 1.5rem;border:none;background:0 0;font-family:'Cormorant Garamond',serif;
+font-size:1.05rem;font-weight:600;color:#8a7e72;cursor:pointer;
+border-bottom:2px solid transparent;margin-bottom:-2px;transition:.25s;
+display:flex;align-items:center;gap:.4rem}
+.tab-btn:hover{color:var(--accent)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}.tab-content.active{display:block}
+.drop-zone{position:relative;border:2px dashed var(--border);border-radius:0 0 12px 12px;padding:3rem 2rem;
+text-align:center;cursor:pointer;transition:.3s;background:rgba(255,255,255,.5)}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(139,69,19,.04);
+transform:translateY(-1px);box-shadow:0 4px 20px var(--shadow)}
+.drop-zone-icon{font-size:2.5rem;margin-bottom:1rem;opacity:.6}
+.drop-zone h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;margin-bottom:.4rem}
+.drop-zone p{color:#8a7e72;font-size:.85rem}
+.drop-zone input[type="file"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.file-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .8rem;
+background:var(--cream);border-radius:20px;font-size:.78rem;color:var(--accent);font-weight:500;margin-top:.5rem}
+.paste-zone{border:2px solid var(--border);border-radius:0 0 12px 12px;padding:1.2rem;background:rgba(255,255,255,.5)}
+.paste-hint{font-family:'Cormorant Garamond',serif;font-size:.92rem;font-style:italic;color:#8a7e72;
+margin-bottom:.8rem;line-height:1.5;padding:.6rem .8rem;background:rgba(139,69,19,.05);
+border-radius:8px;border-left:3px solid var(--accent-light)}
+.paste-hint strong{color:var(--accent);font-style:normal}
+.paste-textarea{width:100%;min-height:220px;padding:1rem;border:1px solid var(--border);border-radius:8px;
+font-family:'Cormorant Garamond',serif;font-size:1.05rem;line-height:1.65;color:var(--ink);background:#fff;resize:vertical}
+.paste-textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,69,19,.08)}
+.paste-textarea::placeholder{color:#b8ad9e;font-style:italic}
+.paste-stats{display:flex;gap:1.2rem;margin-top:.6rem;flex-wrap:wrap}
+.paste-stat{font-size:.78rem;color:#8a7e72}
+.paste-stat strong{color:var(--ink);font-weight:600}
+.paste-title-preview{margin-top:.6rem;padding:.4rem .8rem;background:var(--cream);border-radius:8px;
+font-size:.82rem;color:var(--accent);display:none}
+.paste-title-preview strong{font-weight:600}
+.paste-actions{display:flex;gap:.6rem;margin-top:.8rem}
+.paste-clear-btn{padding:.35rem .8rem;background:0 0;color:#8a7e72;border:1px solid var(--border);
+border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer}
+.paste-clear-btn:hover{border-color:#c44;color:#c44}
+.settings{margin-top:1.5rem;background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem}
+.settings h3{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;margin-bottom:1rem;color:var(--accent)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-group{display:flex;flex-direction:column;gap:.3rem}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:.78rem;font-weight:500;color:#6b6057;text-transform:uppercase;letter-spacing:.05em}
+.form-group input,.form-group select{padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;
+font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--parchment);color:var(--ink)}
+.form-group input:focus,.form-group select:focus{outline:0;border-color:var(--accent)}
+.checkbox-row{display:flex;align-items:center;gap:.5rem;margin-top:.5rem}
+.checkbox-row input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.checkbox-row label{font-size:.85rem;color:var(--ink);cursor:pointer}
+.convert-btn{display:block;width:100%;margin-top:1.5rem;padding:1rem;background:var(--accent);
+color:#fff;border:none;border-radius:10px;font-family:'Cormorant Garamond',serif;
+font-size:1.2rem;font-weight:600;cursor:pointer;transition:.3s}
+.convert-btn:hover:not(:disabled){background:#7a3b10;transform:translateY(-1px);box-shadow:0 4px 16px rgba(139,69,19,.25)}
+.convert-btn:disabled{opacity:.5;cursor:not-allowed}
+.progress-area{margin-top:1.5rem;display:none}.progress-area.visible{display:block}
+.progress-bar-outer{height:6px;background:var(--cream);border-radius:3px;overflow:hidden}
+.progress-bar-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:3px;width:0;transition:width .4s}
+.progress-text{margin-top:.5rem;color:#8a7e72;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:.95rem}
+.preview-area{margin-top:1.5rem;display:none}.preview-area.visible{display:block}
+.preview-area h3{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;margin-bottom:.8rem;color:var(--sage)}
+.preview-box{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem;
+max-height:350px;overflow-y:auto;font-family:'Cormorant Garamond',serif;font-size:1.05rem;line-height:1.7;color:#3a3228}
+.preview-box h2{font-size:1.3rem;margin:1.2rem 0 .5rem;color:var(--accent)}
+.preview-box p{margin-bottom:.8rem}
+.preview-stats{display:flex;gap:1.5rem;margin-top:.8rem;flex-wrap:wrap}
+.stat{font-size:.8rem;color:#8a7e72}.stat strong{color:var(--ink);font-weight:600}
+.btn-row{display:flex;gap:.8rem;margin-top:1rem;flex-wrap:wrap}
+.download-btn,.drive-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.5rem;
+color:#fff;border:none;border-radius:10px;font-family:'Cormorant Garamond',serif;
+font-size:1.1rem;font-weight:600;cursor:pointer;transition:.3s}
+.download-btn{background:var(--sage)}.download-btn:hover:not(:disabled){background:#5a6b4e;transform:translateY(-1px)}
+.drive-btn{background:var(--drive)}.drive-btn:hover:not(:disabled){background:#3367c4;transform:translateY(-1px)}
+.download-btn:disabled,.drive-btn:disabled{opacity:.6;cursor:not-allowed}
+.drive-status{display:none;margin-top:.5rem;font-size:.85rem;font-style:italic;color:#6b6057}
+.drive-status a{color:var(--accent);text-decoration:underline}
+.info-note{margin-top:1rem;padding:.8rem 1rem;background:rgba(139,69,19,.06);
+border-left:3px solid var(--accent-light);border-radius:0 8px 8px 0;font-size:.82rem;color:#6b6057;line-height:1.5}
+.error-msg{margin-top:1rem;padding:.8rem 1rem;background:#fdf2f2;border-left:3px solid #c44;
+border-radius:0 8px 8px 0;font-size:.85rem;color:#8b2020;display:none}
+.error-msg.visible{display:block}
+.preview-box::-webkit-scrollbar{width:6px}
+.preview-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}header h1{font-size:1.6rem}
+.container{padding:1rem}.tab-btn{padding:.6rem 1rem;font-size:.95rem}}
+</style>
+</head>
+<body>
 
+<header>
+  <h1>PDF / DOCX &#8594; <span>EPUB</span></h1>
+  <p>Conversi&#243; neta amb detecci&#243; de taules i refer&#232;ncies</p>
+</header>
+
+<div class="container">
+
+  <div class="input-tabs">
+    <button class="tab-btn active" data-tab="tab-file">&#128196; Fitxer</button>
+    <button class="tab-btn" data-tab="tab-paste">&#128203; Text enganxat</button>
+  </div>
+
+  <div class="tab-content active" id="tab-file">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon">&#128196;</div>
+      <h3>Arrossega el fitxer aqu&#237;</h3>
+      <p>o fes clic per seleccionar un PDF o DOCX</p>
+      <input type="file" id="fileInput" accept=".pdf,.docx">
+      <div class="file-badge" id="fileBadge" style="display:none">
+        <span id="fileName"></span> <span id="fileSize"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-paste">
+    <div class="paste-zone">
+      <div class="paste-hint">
+        <strong>&#9758; La primera l&#237;nia</strong> ser&#224; el t&#237;tol.
+        L&#237;nies en blanc = nou par&#224;graf.
+        Es netegen: notes [1], refs (Autor, any), URLs, *, #, bibliografia sencera.
+      </div>
+      <textarea class="paste-textarea" id="pasteArea"
+        placeholder="T&#237;tol del llibre&#10;&#10;Text del primer par&#224;graf...&#10;&#10;CAP&#205;TOL PRIMER&#10;&#10;Contingut del cap&#237;tol..."></textarea>
+      <div class="paste-title-preview" id="pasteTitlePreview"></div>
+      <div class="paste-stats" id="pasteStats"></div>
+      <div class="paste-actions">
+        <button class="paste-clear-btn" id="pasteClearBtn">&#10005; Netejar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <h3>&#9881; Metadades i opcions</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>T&#237;tol</label>
+        <input type="text" id="metaTitle" placeholder="T&#237;tol del llibre">
+      </div>
+      <div class="form-group">
+        <label>Autor</label>
+        <input type="text" id="metaAuthor" placeholder="Nom de l'autor">
+      </div>
+      <div class="form-group">
+        <label>Llengua</label>
+        <select id="metaLang">
+          <option value="ca">Catal&#224;</option>
+          <option value="es">Castell&#224;</option>
+          <option value="en">Angl&#232;s</option>
+          <option value="fr">Franc&#232;s</option>
+          <option value="it">Itali&#224;</option>
+          <option value="de">Alemany</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mida de font</label>
+        <select id="fontSize">
+          <option value="1.0em">Normal</option>
+          <option value="1.1em">Gran</option>
+          <option value="1.2em">Molt gran</option>
+          <option value="0.9em">Petita</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Separador de cap&#237;tols (regex)</label>
+        <input type="text" id="chapterSep" placeholder="Ex: ^Cap&#237;tol \\d+|^PART [IVX]+ (buit = 1 cap&#237;tol)">
+      </div>
+      <div class="form-group full">
+        <div class="checkbox-row">
+          <input type="checkbox" id="joinLines" checked>
+          <label for="joinLines">Reunificar l&#237;nies trencades (per PDFs)</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="detectHeadings" checked>
+          <label for="detectHeadings">Detectar encap&#231;alaments</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="trimWS" checked>
+          <label for="trimWS">Normalitzar espais</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="cleanRefs" checked>
+          <label for="cleanRefs">&#129529; Eliminar refer&#232;ncies, notes, *, URLs</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="removeTables">
+          <label for="removeTables">&#128683; Eliminar Taules i Gràfics (només DOCX)</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="removeBib" checked>
+          <label for="removeBib">&#128465; Eliminar secció bibliografia</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="visToc" checked>
+          <label for="visToc">&#128209; P&#224;gina d'&#237;ndex visible</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="epub2">
+          <label for="epub2">Compatibilitat EPUB 2 (NCX)</label>
+        </div>
+      </div>
+    </div>
+    <div class="info-note">
+      &#129529; La neteja automàtica elimina: [1], , (Autor, any), ibid., URLs, DOIs,
+      i si es marca, les taules completes (DOCX).
+    </div>
+  </div>
+
+  <button class="convert-btn" id="convertBtn" disabled>Convertir a EPUB</button>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="progress-area" id="progressArea">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
+    <div class="progress-text" id="progressText">Preparant...</div>
+  </div>
+
+  <div class="preview-area" id="previewArea">
+    <h3>&#9758; Previsualitzaci&#243;</h3>
+    <div class="preview-box" id="previewBox"></div>
+    <div class="preview-stats" id="previewStats"></div>
+    <div class="btn-row">
+      <button class="download-btn" id="downloadBtn">&#11015; Descarregar EPUB</button>
+      <button class="drive-btn" id="driveBtn" style="display:none">&#128193; Desar a Drive</button>
+    </div>
+    <div class="drive-status" id="driveStatus"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓ DE LLIBRERIES I WORKERS
+   ============================================================ */
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+var selFile = null, epubBlob = null, mode = 'file';
+var GAS = false;
+try { GAS = !!(google && google.script && google.script.run); } catch(e){}
+
+/* Elements del DOM */
+var $=document.getElementById.bind(document);
+function chk(id, defVal){ var el=$(id); return el ? !!el.checked : defVal; }
+var dropZone=$('dropZone'), fileInput=$('fileInput'), fileBadge=$('fileBadge'),
+    fileNameEl=$('fileName'), fileSizeEl=$('fileSize'), convertBtn=$('convertBtn'),
+    progArea=$('progressArea'), progBar=$('progressBar'), progText=$('progressText'),
+    prevArea=$('previewArea'), prevBox=$('previewBox'), prevStats=$('previewStats'),
+    dlBtn=$('downloadBtn'), errMsg=$('errorMsg'), pasteArea=$('pasteArea'),
+    pasteTitleP=$('pasteTitlePreview'), pasteStatsEl=$('pasteStats'),
+    clearBtn=$('pasteClearBtn'), driveBtn=$('driveBtn'), driveSt=$('driveStatus');
+
+if (GAS) driveBtn.style.display = 'inline-flex';
+
+/* ============================================================
+   FUNCIONS DE NETEJA
+   ============================================================ */
+function clean(s) {
+  // Neteja bàsica de marques de traducció
+  s = s.replace(/Machine\s*Translated\s*by\s*Google/gi, '');
+  // Eliminació específica per al teu PDF: 
+  s = s.replace(/\\/g, '');
+  
+  // Superíndexs
+  s = s.replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079]+/g, '');
+  // Notes [1], [2,3]
+  s = s.replace(/\[\d+(?:[,;\s\-\u2013\u2014]+\d+)*\]/g, '');
+  // Referències (Autor, any) i variants
+  s = s.replace(/\(\s*[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+(?:\s+(?:&|and|i|y|et)\s+[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+)*(?:\s+et\s+al\.?)?\s*,?\s*\d{4}[a-z]?(?:\s*[,;]\s*(?:p{1,2}\.\s*\d[\d\-\u2013\u2014]*|[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+(?:\s+(?:&|and|i|y|et)\s+[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+)*(?:\s+et\s+al\.?)?\s*,?\s*\d{4}[a-z]?))*\s*\)/g, '');
+  // Referències [Autor 2020]
+  s = s.replace(/\[\s*[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+(?:\s+(?:&|and|i|y|et)\s+[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+)*(?:\s+et\s+al\.?)?\s*,?\s*\d{4}[a-z]?\s*\]/g, '');
+  // Latinismes
+  s = s.replace(/\b(?:[Ii]bid(?:em)?|[Ii]b\u00edd(?:em)?|[Oo]p\.?\s*cit\.?|[Cc]f\.?|[Vv]id\.?|[Ll]oc\.?\s*cit\.?|[Ss]upra|[Ii]nfra)\.?\s*(?:,?\s*p{1,2}\.?\s*\d[\d\-\u2013\u2014]*)?\s*/g, '');
+  s = s.replace(/\bet\s+al\.?\s*/g, '');
+  // URLs i DOIs
+  s = s.replace(/https?:\/\/[^\s)<>]+/g, '');
+  s = s.replace(/\bdoi:\s*\S+/gi, '');
+  s = s.replace(/\b10\.\d{4,}\/[^\s]+/g, '');
+  // Paginació
+  s = s.replace(/\b(?:p{1,2}|p\u00e0g|p\u00e0gs|p\u00e1gs?)\.?\s*\d+[\d\-\u2013\u2014,\s]*/gi, '');
+  // Símbols de markdown o llistes
+  s = s.replace(/\*+/g, '');
+  s = s.replace(/^#{1,6}\s+/, '');
+  s = s.replace(/#/g, '');
+  s = s.replace(/\bnot[ea]\s+\d+\b/gi, '');
+  // Neteja final de puntuació
+  s = s.replace(/\(\s*[,;]?\s*\)/g, '');
+  s = s.replace(/\[\s*\]/g, '');
+  s = s.replace(/\s{2,}/g, ' ');
+  s = s.replace(/\s+([.,;:!?])/g, '$1');
+  s = s.replace(/([.,;:])\1+/g, '$1');
+  return s.trim();
+}
+
+var BIB_RE = /^(?:bibliograf[i\u00ed]a|bibliography|references?|r[e\u00e9]f[e\u00e9]rences|notes?\s*(?:finals?|al\s*peu|a\s*peu\s*de\s*p[a\u00e0]gina)?|fonts?\s*(?:consultad[ae]s|bibliogr[a\u00e0]fiques)|obres?\s*citad[ae]s|works?\s*cited|further\s*reading|lectur[ae]s?\s*(?:recomanad[ae]s|addicionals?)|webgraf[i\u00ed]a|recursos?\s*bibliogr[a\u00e0]fics)\s*$/i;
+
+function isBibEntry(t) {
+  if (t.length < 15) return false;
+  if (/^[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+\s*,\s*[A-Z\u00C0-\u00DC]\.?\s/.test(t) && /\(\d{4}\)/.test(t)) return true;
+  if (/^[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+\s*,\s*[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC]+/.test(t) && /\(\d{4}\)/.test(t)) return true;
+  var rw = (t.match(/\b(?:vol|pp|ed|eds|ISBN|ISSN|editorial|publisher|published|universit)/gi)||[]).length;
+  if (rw >= 2) return true;
+  return false;
+}
+
+function removeBib(pars) {
+  var out = [], inB = false, cons = 0;
+  for (var i = 0; i < pars.length; i++) {
+    var p = pars[i];
+    if (p.heading && BIB_RE.test(p.text.trim())) { inB = true; cons = 0; continue; }
+    if (inB && p.heading && !BIB_RE.test(p.text.trim())) {
+      if (/^(?:fonts?\s|primary|secondary|obres?|works?)/i.test(p.text.trim())) continue;
+      inB = false;
+    }
+    if (inB) continue;
+    if (!p.heading && isBibEntry(p.text)) {
+      cons++;
+      if (cons >= 3) { while (out.length && isBibEntry(out[out.length-1].text)) out.pop(); continue; }
+    } else cons = 0;
+    if (cons < 3) out.push(p);
+  }
+  return out;
+}
+
+/* ============================================================
+   UI EVENTS
+   ============================================================ */
+document.querySelectorAll('.tab-btn').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');});
+    document.querySelectorAll('.tab-content').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    $(b.dataset.tab).classList.add('active');
+    mode = b.dataset.tab === 'tab-paste' ? 'paste' : 'file';
+    updBtn();
+  });
+});
+
+pasteArea.addEventListener('input', function(){ updPaste(); updBtn(); });
+clearBtn.addEventListener('click', function(){ pasteArea.value=''; updPaste(); updBtn(); });
+
+function updPaste() {
+  var t = pasteArea.value;
+  if (!t.trim()) { pasteTitleP.style.display='none'; pasteStatsEl.innerHTML=''; return; }
+  var lines = t.split('\n'), fl = '';
+  for (var i=0;i<lines.length;i++) if (lines[i].trim()) { fl=lines[i].trim(); break; }
+  if (fl) {
+    pasteTitleP.innerHTML = '<strong>T\u00edtol:</strong> ' + escH(fl);
+    pasteTitleP.style.display = 'block';
+    var mt = $('metaTitle');
+    if (!mt.value || mt.dataset.a==='p') { mt.value=fl; mt.dataset.a='p'; }
+  } else pasteTitleP.style.display = 'none';
+  var ne = lines.filter(function(l){return l.trim().length>0;});
+  var w = t.trim().split(/\s+/).filter(function(x){return x.length>0;}).length;
+  pasteStatsEl.innerHTML =
+    '<span class="paste-stat"><strong>'+ne.length+'</strong> l\u00ednies</span>'+
+    '<span class="paste-stat"><strong>'+w.toLocaleString()+'</strong> paraules</span>'+
+    '<span class="paste-stat"><strong>'+(t.length/1000).toFixed(1)+'k</strong> car.</span>';
+}
+function updBtn() { convertBtn.disabled = mode==='paste' ? !pasteArea.value.trim() : !selFile; }
+
+dropZone.addEventListener('click', function(){ fileInput.click(); });
+dropZone.addEventListener('dragover', function(e){ e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', function(){ dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', function(e){ e.preventDefault(); dropZone.classList.remove('dragover');
+  if(e.dataTransfer.files.length) pickF(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', function(e){ if(e.target.files.length) pickF(e.target.files[0]); });
+
+function pickF(f) {
+  var ext = f.name.split('.').pop().toLowerCase();
+  if (ext!=='pdf'&&ext!=='docx') { showE('Format no suportat.'); return; }
+  selFile = f;
+  fileNameEl.textContent = f.name;
+  fileSizeEl.textContent = '('+(f.size/1024).toFixed(0)+' KB)';
+  fileBadge.style.display = 'inline-flex'; hideE();
+  var t = f.name.replace(/\.\w+$/,'').replace(/[_-]/g,' ');
+  var mt = $('metaTitle');
+  if (!mt.value||mt.dataset.a==='f') { mt.value=t; mt.dataset.a='f'; }
+  updBtn();
+}
+
+convertBtn.addEventListener('click', run);
+dlBtn.addEventListener('click', function(){
+  if (!epubBlob) return;
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(epubBlob);
+  a.download = bName()+'.epub'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+driveBtn.addEventListener('click', async function(){
+  if (!epubBlob||!GAS) return;
+  driveBtn.disabled = true; driveBtn.textContent = '\u23F3 Desant...';
+  driveSt.style.display = 'block'; driveSt.textContent = 'Pujant...'; driveSt.style.color = '#6b6057';
+  try {
+    var b64 = await new Promise(function(ok,ko){
+      var r = new FileReader(); r.onload=function(){ok(r.result.split(',')[1]);}; r.onerror=ko; r.readAsDataURL(epubBlob);
+    });
+    google.script.run
+      .withSuccessHandler(function(r){
+        driveBtn.disabled=false; driveBtn.textContent='\uD83D\uDCC1 Desar a Drive';
+        if(r.success){driveSt.innerHTML='\u2705 <a href="'+r.url+'" target="_blank">Obrir a Drive</a> ('+(r.size/1024).toFixed(0)+' KB)';driveSt.style.color='#2e7d32';}
+        else{driveSt.textContent='\u274C '+r.error;driveSt.style.color='#c44';}
+      })
+      .withFailureHandler(function(e){
+        driveBtn.disabled=false; driveBtn.textContent='\uD83D\uDCC1 Desar a Drive';
+        driveSt.textContent='\u274C '+e.message; driveSt.style.color='#c44';
+      })
+      .saveEpubToDrive(b64, bName()+'.epub');
+  } catch(e) {
+    driveBtn.disabled=false; driveBtn.textContent='\uD83D\uDCC1 Desar a Drive';
+    driveSt.textContent='\u274C '+e.message; driveSt.style.color='#c44';
+  }
+});
+
+function bName() {
+  if (mode==='paste') { var t=$('metaTitle').value||'text'; return t.replace(/[^\w\s\-\u00E0-\u00FC\u00E7]/gi,'').replace(/\s+/g,'_').substring(0,60); }
+  return selFile ? selFile.name.replace(/\.\w+$/,'') : 'epub';
+}
+function showE(m) { errMsg.textContent=m; errMsg.classList.add('visible'); }
+function hideE()  { errMsg.classList.remove('visible'); }
+function sP(p,t)  { progBar.style.width=p+'%'; progText.textContent=t; }
+function sl(ms)   { return new Promise(function(r){setTimeout(r,ms);}); }
+
+/* ============================================================
+   LOGICA PRINCIPAL
+   ============================================================ */
+async function run() {
+  hideE(); progArea.classList.add('visible'); prevArea.classList.remove('visible');
+  convertBtn.disabled = true; epubBlob = null;
+  
+  // Llegim les opcions
+  var doCl = chk('cleanRefs', true);
+  var doBi = chk('removeBib', true);
+  var noT  = chk('removeTables', false); // Opció per eliminar taules
+
+  try {
+    var proc;
+    if (mode==='paste') {
+      sP(20,'Processant text...'); await sl(50);
+      proc = procPaste(pasteArea.value, {dH:chk('detectHeadings', true), tr:chk('trimWS', true), cl:doCl});
+    } else {
+      sP(10,'Llegint fitxer...'); var ext=selFile.name.split('.').pop().toLowerCase();
+      var raw = ext==='pdf' ? await readPDF(selFile) : await readDOCX(selFile);
+      sP(40,'Processant...'); await sl(50);
+      // Passem l'opció noT (noTables) a les funcions de processament
+      var o = {jn:chk('joinLines', true), dH:chk('detectHeadings', true), tr:chk('trimWS', true), cl:doCl, noT: noT};
+      proc = ext==='pdf' ? procPDF(raw,o) : procDOCX(raw,o);
+    }
+    
+    // Neteja de bibliografia si cal
+    if (doBi) proc = removeBib(proc);
+    
+    // Neteja general de text
+    if (doCl) proc = proc.map(function(p){
+        return {text:clean(p.text), heading:p.heading, isTitle:p.isTitle};
+    }).filter(function(p){return p.text.length>0;});
+    
+    // Filtratge final de paràgrafs molt curts que no són títols
+    proc = proc.filter(function(p){return p.heading ? p.text.length>0 : p.text.length>2;});
+
+    sP(60,'Dividint...'); await sl(50);
+    var chs = splitCh(proc, $('chapterSep').value.trim());
+    
+    sP(75,'Generant EPUB...'); await sl(50);
+    var meta = {
+      title:$('metaTitle').value||'Sense t\u00edtol', author:$('metaAuthor').value||'Desconegut',
+      lang:$('metaLang').value, fs:$('fontSize').value, e2:chk('epub2', false), vt:chk('visToc', true)
+    };
+    epubBlob = await genEPUB(chs,meta);
+    sP(100,'Completat!'); showPrev(chs,proc); convertBtn.disabled=false;
+  } catch(e) { console.error(e); showE('Error: '+e.message); convertBtn.disabled=false; }
+}
+
+function procPaste(text, o) {
+  var lines=text.split('\n'), pars=[], tF=false, cur='';
+  for (var i=0;i<lines.length;i++) {
+    var tr=lines[i].trim();
+    if (o.cl&&tr) tr=clean(tr);
+    if (!tF&&tr) { pars.push({text:tr,heading:true,isTitle:true}); tF=true; continue; }
+    if (!tr) { if(cur){pars.push({text:cur.trim(),heading:false});cur='';} continue; }
+    if (!tr.length) continue;
+    var isH = false;
+    if (o.dH) {
+      var caps=tr===tr.toUpperCase()&&tr.length>2&&tr.length<100&&/[A-Z\u00C0-\u00DA]/.test(tr);
+      var alone=false;
+      if(tr.length<80&&!/[.,:;]$/.test(tr)){
+        var pE=(i===0)||!lines[i-1].trim(), nE=(i===lines.length-1)||!lines[i+1]||!lines[i+1].trim();
+        if(pE&&nE&&tr.length<60)alone=true;
+      }
+      var numH=/^\d+[\.\)]\s+[A-Z\u00C0-\u00DC]/.test(tr)&&tr.length<100;
+      var romH=/^[IVXLCDM]+[\.\)]\s+/i.test(tr)&&tr.length<80;
+      var chW=/^(?:cap[\u00edi]tol|chapter|part[ei]?|secci[\u00f3o]|section|apartat)\s+/i.test(tr)&&tr.length<100;
+      isH=caps||alone||numH||romH||chW;
+    }
+    if(isH){if(cur){pars.push({text:cur.trim(),heading:false});cur='';}pars.push({text:tr,heading:true});}
+    else{
+      if(cur){if(cur.endsWith('-')&&tr[0]&&tr[0]===tr[0].toLowerCase())cur=cur.slice(0,-1)+tr;else cur+=' '+tr;}
+      else cur=tr;
+    }
+  }
+  if(cur)pars.push({text:cur.trim(),heading:false});
+  if(o.tr)pars=pars.map(function(p){return{text:p.text.replace(/\s+/g,' ').trim(),heading:p.heading,isTitle:p.isTitle};}).filter(function(p){return p.text.length>0;});
+  return pars;
+}
+
+/* ============================================================
+   PDF PARSER
+   ============================================================ */
+async function readPDF(file) {
+  var ab=await file.arrayBuffer(), pdf=await pdfjsLib.getDocument({data:ab}).promise, pages=[];
+  for (var i=1;i<=pdf.numPages;i++) {
+    var pg=await pdf.getPage(i), ct=await pg.getTextContent(), lm=new Map(), vp=pg.getViewport({scale:1});
+    for (var k=0;k<ct.items.length;k++) {
+      var it=ct.items[k]; if(!it.str&&it.str!=='')continue;
+      var y=Math.round(it.transform[5]*10)/10, fnd=false;
+      for(var[key,ln]of lm){if(Math.abs(key-y)<2){ln.items.push({t:it.str,x:it.transform[4],fs:it.height||12});fnd=true;break;}}
+      if(!fnd)lm.set(y,{y:y,items:[{t:it.str,x:it.transform[4],fs:it.height||12}]});
+    }
+    var sl2=[...lm.values()].sort(function(a,b){return b.y-a.y;}).map(function(ln){
+      ln.items.sort(function(a,b){return a.x-b.x;});
+      return{text:ln.items.map(function(x){return x.t;}).join(''),fs:Math.max.apply(null,ln.items.map(function(x){return x.fs;})),y:ln.y};
+    });
+    pages.push({lines:sl2,h:vp.height});
+    sP(10+Math.round(30*i/pdf.numPages),'P\u00e0gina '+i+'/'+pdf.numPages+'...');
+  }
+  return pages;
+}
+
+function procPDF(pages, o) {
+  var all=[];
+  for(var p=0;p<pages.length;p++){for(var l=0;l<pages[p].lines.length;l++)all.push(pages[p].lines[l]);all.push({text:'',fs:0,brk:true});}
+  var fsa=all.filter(function(x){return x.fs>0;}).map(function(x){return x.fs;});
+  fsa.sort(function(a,b){return a-b;});
+  var med=fsa[Math.floor(fsa.length/2)]||12;
+  var pars=[],cur='',curH=false;
+  for(var i=0;i<all.length;i++){
+    var ln=all[i];
+    if(ln.brk){if(!o.jn&&cur){pars.push({text:cur.trim(),heading:curH});cur='';curH=false;}continue;}
+    var tr=ln.text.trim();
+    if(o.cl)tr=clean(tr);
+    if(!tr){if(cur){pars.push({text:cur.trim(),heading:curH});cur='';curH=false;}continue;}
+    if(/^Machine\s*Translated\s*by\s*Google$/i.test(tr))continue;
+    
+    // Simple heuristic for headers in PDF
+    var big=ln.fs>med*1.15;
+    var hC=o.dH&&big&&tr.length<120;
+    var caps=tr===tr.toUpperCase()&&tr.length>3&&tr.length<100&&/[A-Z\u00C0-\u00DC]/.test(tr);
+    var numH=/^\d+[\.\)]\s+[A-Z\u00C0-\u00DC]/.test(tr)&&tr.length<100;
+    var chW=/^(?:cap[\u00edi]tol|chapter|part[ei]?|secci[\u00f3o]|section|apartat)\s+/i.test(tr)&&tr.length<100;
+    var isH=hC||numH||chW||(o.dH&&caps&&!/^\d/.test(tr));
+    
+    if(isH&&cur){pars.push({text:cur.trim(),heading:curH});cur='';curH=false;}
+    if(!o.jn){if(tr)pars.push({text:tr,heading:isH});continue;}
+    if(!cur){cur=tr;curH=isH;continue;}
+    if(sJoin(cur,tr,ln,all[i-1],med)&&!isH&&!curH){
+      if(cur.endsWith('-')){if(tr[0]&&tr[0]===tr[0].toLowerCase())cur=cur.slice(0,-1)+tr;else cur+=tr;}
+      else cur+=' '+tr;
+    }else{pars.push({text:cur.trim(),heading:curH});cur=tr;curH=isH;}
+  }
+  if(cur)pars.push({text:cur.trim(),heading:curH});
+  if(o.tr)return pars.map(function(p){return{text:p.text.replace(/\s+/g,' ').trim(),heading:p.heading};}).filter(function(p){return p.text.length>0;});
+  return pars.filter(function(p){return p.text.length>0;});
+}
+
+function sJoin(prev,curr,cL,pL,m){
+  if(pL&&!pL.brk&&cL.fs&&pL.fs&&Math.abs(cL.fs-pL.fs)>m*0.15)return false;
+  var p=prev.trim(),c=curr.trim();
+  if(/^[a-z\u00E0-\u00FC\u00E7]/.test(c))return true;
+  if(/[,;\-]$/.test(p))return true;
+  if(/[.!?:;\u00BB\u201D\)]$/.test(p)&&/^[A-Z\u00C0-\u00DC\d]/.test(c))return false;
+  if(!/[.!?:;\u00BB\u201D\)]$/.test(p)&&/^[A-Z\u00C0-\u00DC]/.test(c))return p.length>=35;
+  return true;
+}
+
+/* ============================================================
+   DOCX PARSER (Amb opció d'ignorar taules)
+   ============================================================ */
+async function readDOCX(file) {
+  return (await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()})).value;
+}
+
+function procDOCX(html, o) {
+  var doc=new DOMParser().parseFromString(html,'text/html'), pars=[];
+  (function w(nd){
+    // Si noT (noTables) és cert i trobem una taula, sortim de la branca (no la processem)
+    if (o.noT && (nd.nodeName === 'TABLE' || nd.nodeName === 'TBODY' || nd.nodeName === 'TR')) return;
+
+    for(var i=0;i<nd.childNodes.length;i++){
+      var ch=nd.childNodes[i]; if(ch.nodeType!==1)continue;
+      var tg=ch.tagName.toLowerCase();
+      
+      // Si hem d'ignorar taules, saltem 'table'
+      if(o.noT && tg === 'table') continue;
+
+      if(/^h[1-6]$/.test(tg)){
+          var t=ch.textContent.trim(); if(o.cl)t=clean(t);
+          if(t)pars.push({text:t,heading:true});
+      }
+      else if(tg==='p'){
+          var t=ch.textContent.trim(); if(o.cl)t=clean(t);
+          if(t){
+              var b=ch.querySelector('strong,b');
+              var iB=b&&ch.textContent.trim()===(b.textContent||'').trim();
+              pars.push({text:t,heading:o.dH&&iB&&t.length<100});
+          }
+      }
+      else if(tg==='li'){
+          var t=ch.textContent.trim(); if(o.cl)t=clean(t);
+          if(t)pars.push({text:t,heading:false});
+      }
+      else if('ul ol div section article blockquote table tbody tr'.split(' ').indexOf(tg)>=0){
+          w(ch);
+      }
+      else if(tg==='td'||tg==='th'){
+          // Si estem aquí, és que o.noT és fals (altrament no hauríem entrat a table/tr)
+          var t=ch.textContent.trim(); if(o.cl)t=clean(t);
+          if(t)pars.push({text:t,heading:false});
+      }
+    }
+  })(doc.body);
+  
+  if(o.tr) return pars.map(function(p){return{text:p.text.replace(/\s+/g,' ').trim(),heading:p.heading};}).filter(function(p){return p.text.length>0;});
+  return pars.filter(function(p){return p.text.length>0;});
+}
+
+/* ============================================================
+   GENERACIÓ EPUB I UTILS
+   ============================================================ */
+function splitCh(pars,sep){
+  if(!sep)return[{title:'',paragraphs:pars}];
+  var re=new RegExp(sep,'im'),chs=[],cur={title:'',paragraphs:[]};
+  for(var i=0;i<pars.length;i++){
+    if(re.test(pars[i].text)){if(cur.paragraphs.length||cur.title)chs.push(cur);cur={title:pars[i].text,paragraphs:[]};}
+    else cur.paragraphs.push(pars[i]);
+  }
+  if(cur.paragraphs.length||cur.title)chs.push(cur);
+  return chs.length?chs:[{title:'',paragraphs:pars}];
+}
+
+async function genEPUB(chs, m) {
+  var z = new JSZip();
+  z.file('mimetype','application/epub+zip',{compression:'STORE'});
+  z.file('META-INF/container.xml','<?xml version="1.0" encoding="UTF-8"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n  <rootfiles>\n    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n  </rootfiles>\n</container>');
+
+  z.file('OEBPS/style.css','@charset "UTF-8";\nbody{font-family:Georgia,"Times New Roman",serif;font-size:'+m.fs+';line-height:1.6;margin:1em;color:#1a1a1a}\nh1,h2,h3{font-family:Georgia,serif;line-height:1.3;margin-top:1.5em;margin-bottom:.5em;page-break-after:avoid}\nh1{font-size:1.6em;text-align:center;margin-top:2em}\nh2{font-size:1.3em}\nh3{font-size:1.1em}\np{margin:0;text-indent:1.2em;text-align:justify;orphans:2;widows:2}\np.first,h1+p,h2+p,h3+p{text-indent:0}\n.toc-title{font-size:1.5em;text-align:center;margin:1.5em 0 1em}\n.toc-list{list-style:none;padding:0;margin:0}\n.toc-list li{margin:.4em 0}\n.toc-list a{text-decoration:none;color:#1a1a1a}\n.toc-chapter{font-weight:bold;font-size:1.05em;margin-top:.8em}\n.toc-heading{padding-left:1.5em;font-size:.95em}\n');
+
+  var toc=[],chF=[];
+  for(var i=0;i<chs.length;i++){
+    var ch=chs[i], fn='ch_'+String(i+1).padStart(3,'0')+'.xhtml';
+    var tt=ch.title||(chs.length===1?m.title:'Cap\u00edtol '+(i+1));
+    toc.push({l:tt,f:fn,a:'',lv:1});
+    var bd=''; if(ch.title) bd+='  <h1>'+X(ch.title)+'</h1>\n';
+    var hc=0,pH=!!ch.title;
+    for(var j=0;j<ch.paragraphs.length;j++){
+      var p=ch.paragraphs[j];
+      if(p.heading){hc++;var aid='h'+(i+1)+'_'+hc;var tag=p.isTitle?'h1':'h2';
+        bd+='  <'+tag+' id="'+aid+'">'+X(p.text)+'</'+tag+'>\n';
+        toc.push({l:p.text,f:fn,a:aid,lv:p.isTitle?1:2});pH=true;}
+      else{bd+='  <p'+(j===0||pH?' class="first"':'')+'>'+X(p.text)+'</p>\n';pH=false;}
+    }
+    z.file('OEBPS/'+fn,xW(m.lang,tt,bd));
+    chF.push({fn:fn,tt:tt,id:'c'+(i+1)});
+  }
+
+  if(m.vt&&toc.length){
+    var tb='  <h1 class="toc-title">\u00cdndex</h1>\n  <ul class="toc-list">\n';
+    for(var t=0;t<toc.length;t++){var e=toc[t],hr=e.a?(e.f+'#'+e.a):e.f;
+      tb+='    <li class="'+(e.lv===1?'toc-chapter':'toc-heading')+'"><a href="'+hr+'">'+X(e.l)+'</a></li>\n';}
+    tb+='  </ul>\n';
+    z.file('OEBPS/toc_page.xhtml',xW(m.lang,'\u00cdndex',tb));
+  }
+
+  var uid='urn:uuid:'+crypto.randomUUID();
+
+  if(m.e2){
+    var nx='';
+    for(var n=0;n<toc.length;n++){var te=toc[n],sr=te.a?(te.f+'#'+te.a):te.f;
+      nx+='    <navPoint id="np'+(n+1)+'" playOrder="'+(n+1)+'">\n      <navLabel><text>'+X(te.l)+'</text></navLabel>\n      <content src="'+sr+'"/>\n    </navPoint>\n';}
+    z.file('OEBPS/toc.ncx','<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">\n  <head>\n    <meta name="dtb:uid" content="'+uid+'"/>\n    <meta name="dtb:depth" content="1"/>\n    <meta name="dtb:totalPageCount" content="0"/>\n    <meta name="dtb:maxPageNumber" content="0"/>\n  </head>\n  <docTitle><text>'+X(m.title)+'</text></docTitle>\n  <docAuthor><text>'+X(m.author)+'</text></docAuthor>\n  <navMap>\n'+nx+'  </navMap>\n</ncx>');
+  }
+
+  var ni='';
+  for(var v=0;v<toc.length;v++){var ne=toc[v],nh=ne.a?(ne.f+'#'+ne.a):ne.f;
+    ni+='      <li'+(ne.lv===2?' style="padding-left:1.5em;font-size:.9em"':'')+'><a href="'+nh+'">'+X(ne.l)+'</a></li>\n';}
+  z.file('OEBPS/nav.xhtml','<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="'+m.lang+'">\n<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\n<title>\u00cdndex</title><link rel="stylesheet" type="text/css" href="style.css"/>\n</head>\n<body>\n  <nav epub:type="toc" id="toc">\n    <h1>\u00cdndex</h1>\n    <ol>\n'+ni+'    </ol>\n  </nav>\n</body>\n</html>');
+
+  var OP='http://www.idpf.org/2007/opf',DC='http://purl.org/dc/elements/1.1/';
+  var now=new Date().toISOString().split('.')[0]+'Z',ver=m.e2?'2.0':'3.0';
+  var mi='';
+  if(m.e2)mi+='    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>\n';
+  mi+='    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml"'+(m.e2?'':' properties="nav"')+'/>\n';
+  if(m.vt)mi+='    <item id="tp" href="toc_page.xhtml" media-type="application/xhtml+xml"/>\n';
+  for(var q=0;q<chF.length;q++)mi+='    <item id="'+chF[q].id+'" href="'+chF[q].fn+'" media-type="application/xhtml+xml"/>\n';
+  var si='';if(m.vt)si+='    <itemref idref="tp"/>\n';
+  for(var s=0;s<chF.length;s++)si+='    <itemref idref="'+chF[s].id+'"/>\n';
+
+  z.file('OEBPS/content.opf','<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="'+OP+'" version="'+ver+'" unique-identifier="uid">\n  <metadata xmlns:dc="'+DC+'"'+(m.e2?' xmlns:opf="'+OP+'"':'')+'>\n    <dc:identifier id="uid">'+uid+'</dc:identifier>\n    <dc:title>'+X(m.title)+'</dc:title>\n    <dc:creator'+(m.e2?' opf:role="aut"':'')+'>'+X(m.author)+'</dc:creator>\n    <dc:language>'+m.lang+'</dc:language>\n'+(m.e2?'':'    <meta property="dcterms:modified">'+now+'</meta>\n')+'  </metadata>\n  <manifest>\n    <item id="style" href="style.css" media-type="text/css"/>\n'+mi+'  </manifest>\n  <spine'+(m.e2?' toc="ncx"':'')+'>\n'+si+'  </spine>\n  <guide>\n    <reference type="toc" title="\u00cdndex" href="'+(m.vt?'toc_page.xhtml':'nav.xhtml')+'"/>\n  </guide>\n</package>');
+
+  sP(90,'Empaquetant...');
+  return await z.generateAsync({type:'blob',mimeType:'application/epub+zip'});
+}
+
+function xW(lang,title,body){
+  return'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">\n<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="'+lang+'">\n<head>\n  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\n  <title>'+X(title)+'</title>\n  <link rel="stylesheet" type="text/css" href="style.css"/>\n</head>\n<body>\n'+body+'</body>\n</html>';
+}
+
+function X(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+
+function showPrev(chs,all){
+  prevArea.classList.add('visible');
+  var h='';
+  for(var i=0;i<chs.length;i++){if(chs[i].title)h+='<h2>'+escH(chs[i].title)+'</h2>';
+    for(var j=0;j<chs[i].paragraphs.length;j++){var p=chs[i].paragraphs[j];h+=p.heading?'<h2>'+escH(p.text)+'</h2>':'<p>'+escH(p.text)+'</p>';}}
+  prevBox.innerHTML=h;
+  var tc=0,tw=0,hc=0;
+  for(var k=0;k<all.length;k++){tc+=all[k].text.length;tw+=all[k].text.split(/\s+/).length;if(all[k].heading)hc++;}
+  prevStats.innerHTML=
+    '<span class="stat"><strong>'+chs.length+'</strong> cap.</span>'+
+    '<span class="stat"><strong>'+all.length+'</strong> par.</span>'+
+    '<span class="stat"><strong>'+tw.toLocaleString()+'</strong> paraules</span>'+
+    '<span class="stat"><strong>'+hc+'</strong> enc.</span>'+
+    '<span class="stat"><strong>'+(tc/1000).toFixed(0)+'k</strong> car.</span>';
+}
+
+function escH(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+</script>
+</body>
+</html>
